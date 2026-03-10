@@ -121,3 +121,5 @@ mypy src/
 ## License
 
 MIT
+
+<!-- mcp-name: mcp-pfsense -->
