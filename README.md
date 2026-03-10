@@ -122,4 +122,4 @@ mypy src/
 
 MIT
 
-<!-- mcp-name: mcp-pfsense -->
+<!-- mcp-name: io.github.antonio-mello-ai/mcp-pfsense -->

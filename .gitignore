@@ -10,3 +10,5 @@ build/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.mcpregistry_github_token
+.mcpregistry_registry_token
