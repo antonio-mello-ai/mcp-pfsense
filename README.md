@@ -8,6 +8,10 @@ MCP server for managing **pfSense firewalls** through AI assistants like Claude,
 
 > **Requires**: [pfrest](https://github.com/pfrest/pfSense-pkg-RESTAPI) package installed on your pfSense instance (provides the REST API).
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/antonio-mello-ai-mcp-pfsense).
+
 ## Features
 
 **17 tools** across 6 categories:
