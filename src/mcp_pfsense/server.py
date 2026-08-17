@@ -123,9 +123,13 @@ def add_dhcp_static_mapping(
 
 
 @mcp.tool()
-def delete_dhcp_static_mapping(mapping_id: int, confirm: bool = False) -> dict[str, Any]:
-    """Delete a DHCP static mapping by ID. Requires confirm=true."""
-    return dhcp.delete_dhcp_static_mapping(_get_client(), mapping_id=mapping_id, confirm=confirm)
+def delete_dhcp_static_mapping(
+    interface: str, mapping_id: int, confirm: bool = False
+) -> dict[str, Any]:
+    """Delete a DHCP static mapping by interface and ID. Requires confirm=true."""
+    return dhcp.delete_dhcp_static_mapping(
+        _get_client(), interface=interface, mapping_id=mapping_id, confirm=confirm
+    )
 
 
 # --- DNS ---

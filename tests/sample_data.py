@@ -47,7 +47,7 @@ FIREWALL_RULES = {
     "data": [
         {
             "id": 1,
-            "interface": "lan",
+            "interface": ["lan"],
             "type": "pass",
             "protocol": "tcp",
             "source": "any",
@@ -57,7 +57,7 @@ FIREWALL_RULES = {
         },
         {
             "id": 2,
-            "interface": "wan",
+            "interface": ["wan"],
             "type": "block",
             "protocol": "any",
             "source": "any",
@@ -72,7 +72,7 @@ FIREWALL_RULE_CREATED = {
     "status": "ok",
     "data": {
         "id": 3,
-        "interface": "lan",
+        "interface": ["lan"],
         "type": "pass",
         "protocol": "tcp",
         "destination_port": "80",
@@ -127,8 +127,8 @@ DHCP_STATIC_MAPPINGS = {
     "status": "ok",
     "data": [
         {
+            "parent_id": "lan",
             "id": 1,
-            "interface": "lan",
             "mac": "aa:bb:cc:dd:ee:10",
             "ipaddr": "10.10.10.50",
             "hostname": "nas",
@@ -163,7 +163,7 @@ DNS_HOST_OVERRIDES = {
             "id": 1,
             "host": "nas",
             "domain": "home.lan",
-            "ip": "10.10.10.50",
+            "ip": ["10.10.10.50"],
             "descr": "NAS local DNS",
         },
         {
@@ -183,7 +183,7 @@ DNS_OVERRIDE_CREATED = {
         "id": 3,
         "host": "proxmox",
         "domain": "home.lan",
-        "ip": "10.10.10.100",
+        "ip": ["10.10.10.100"],
     },
 }
 

@@ -95,11 +95,31 @@ Once connected, ask your AI assistant:
 
 ## API Compatibility
 
-- **pfSense**: 2.7.x (tested on 2.7.2)
-- **pfrest**: v2.x (REST API v2)
+- **pfSense**: 2.7.x and 2.8.x
+- **pfrest**: v2.7.0 or later (REST API v2). Listing DHCP static mappings uses the `/services/dhcp_server/static_mappings` collection endpoint, which pfrest added in v2.7.0; every other tool works with any v2.x release.
 - **Python**: 3.11+
 
+The endpoint each tool calls is pinned by `tests/test_client_endpoints.py`, derived from the pfrest v2 endpoint definitions. Versions before 0.1.2 called several endpoints that do not exist in pfrest v2 (see Troubleshooting).
+
 > **Note**: pfrest runs on nginx (port 80 by default), separate from the pfSense WebGUI (lighttpd on port 443). If your pfrest is configured on a non-standard port, set `PFSENSE_PORT` and `PFSENSE_SCHEME` accordingly.
+
+## Troubleshooting
+
+### Only `get_system_status` and `get_arp_table` work; everything else returns 400/404
+
+mcp-pfsense 0.1.1 and earlier called singular endpoints for listing (`/interface`, `/firewall/rule`, `/firewall/alias`) and legacy paths that pfrest v2 does not serve (`/status/dhcp_leases`, `/services/dhcpd/static_mapping`, `/services/unbound/host_override`, `/status/gateway`, `/status/service` for GET). Upgrade to 0.1.2 or later.
+
+### `403` on `list_services` or other reads
+
+pfrest checks the privileges of the API user per endpoint. Grant the user the `api-v2-*` privileges for the endpoints you need (or `page-all` for full access) under **System → User Manager**.
+
+### `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`
+
+The MCP Python SDK 2.0 removed the module that mcp-pfsense 0.1.1 and earlier import, so fresh installs (`uvx mcp-pfsense`, `pip install`) failed on startup. Upgrade to 0.1.2 or later, which pins `mcp<2`. If you must stay on an older mcp-pfsense: `uvx --with "mcp<2" mcp-pfsense`.
+
+### Firewall, DHCP, or DNS changes do not take effect
+
+Write tools send `apply=true`, so pfrest reloads the affected subsystem right away. If a change still shows as pending, check the pfrest **Settings → Apply changes** behaviour and confirm the API user is allowed to apply.
 
 ## Development
 

@@ -31,7 +31,24 @@ def test_list_firewall_rules_filter_interface(client: PfSenseClient) -> None:
     result = firewall.list_firewall_rules(client, interface="lan")
 
     assert len(result) == 1
-    assert result[0]["interface"] == "lan"
+    assert result[0]["interface"] == ["lan"]
+    client._client.get.assert_called_once_with("/firewall/rules", params=None)  # type: ignore[union-attr]
+
+
+def test_list_firewall_rules_filter_interface_legacy_string(client: PfSenseClient) -> None:
+    """Older payloads carried `interface` as a plain string; keep matching them."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "code": 200,
+        "status": "ok",
+        "data": [{"id": 1, "interface": "lan"}, {"id": 2, "interface": "wan"}],
+    }
+    mock_resp.raise_for_status = MagicMock()
+    client._client.get.return_value = mock_resp  # type: ignore[union-attr]
+
+    result = firewall.list_firewall_rules(client, interface="wan")
+
+    assert [r["id"] for r in result] == [2]
 
 
 def test_add_firewall_rule(client: PfSenseClient) -> None:
@@ -50,6 +67,20 @@ def test_add_firewall_rule(client: PfSenseClient) -> None:
     )
 
     assert result["id"] == 3
+    client._client.post.assert_called_once_with(  # type: ignore[union-attr]
+        "/firewall/rule",
+        json={
+            "apply": True,
+            "interface": ["lan"],
+            "type": "pass",
+            "ipprotocol": "inet",
+            "source": "any",
+            "destination": "any",
+            "protocol": "tcp",
+            "destination_port": "80",
+            "descr": "Allow HTTP",
+        },
+    )
 
 
 def test_delete_firewall_rule_no_confirm(client: PfSenseClient) -> None:

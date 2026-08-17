@@ -38,7 +38,6 @@ def add_dhcp_static_mapping(
 ) -> dict[str, Any]:
     """Create a DHCP static mapping (IP reservation) for a MAC address."""
     params: dict[str, Any] = {
-        "interface": interface,
         "mac": mac,
         "ipaddr": ipaddr,
     }
@@ -47,27 +46,34 @@ def add_dhcp_static_mapping(
     if descr:
         params["descr"] = descr
 
-    result = client.create_dhcp_static_mapping(**params)
+    result = client.create_dhcp_static_mapping(interface, **params)
     data: dict[str, Any] = result.get("data", result)
     return data
 
 
 def delete_dhcp_static_mapping(
     client: PfSenseClient,
+    interface: str,
     mapping_id: int,
     confirm: bool = False,
 ) -> dict[str, Any]:
-    """Delete a DHCP static mapping by ID."""
+    """Delete a DHCP static mapping by interface and ID.
+
+    Static mappings belong to a DHCP server (one per interface), so both the
+    interface and the mapping ID are needed to address one.
+    """
     if not confirm:
         return {
-            "warning": f"This will delete DHCP static mapping with ID {mapping_id}. "
-            f"Call again with confirm=true to proceed.",
+            "warning": f"This will delete DHCP static mapping {mapping_id} on interface "
+            f"'{interface}'. Call again with confirm=true to proceed.",
+            "interface": interface,
             "mapping_id": mapping_id,
         }
 
-    result = client.delete_dhcp_static_mapping(mapping_id)
+    result = client.delete_dhcp_static_mapping(interface, mapping_id)
     return {
         "success": True,
+        "interface": interface,
         "mapping_id": mapping_id,
         "message": f"DHCP static mapping {mapping_id} deleted.",
         "data": result.get("data", {}),

@@ -23,11 +23,15 @@ def add_dns_host_override(
     ip: str,
     descr: str = "",
 ) -> dict[str, Any]:
-    """Create a DNS host override entry in Unbound DNS Resolver."""
+    """Create a DNS host override entry in Unbound DNS Resolver.
+
+    pfrest v2 models `ip` as a list of addresses, so the single IP given here
+    is wrapped before it is sent.
+    """
     params: dict[str, Any] = {
         "host": host,
         "domain": domain,
-        "ip": ip,
+        "ip": [ip],
     }
     if descr:
         params["descr"] = descr

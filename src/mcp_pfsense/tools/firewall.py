@@ -15,8 +15,16 @@ def list_firewall_rules(
     result = client.get_firewall_rules()
     rules: list[dict[str, Any]] = result.get("data", [])
     if interface:
-        rules = [r for r in rules if r.get("interface", "") == interface]
+        rules = [r for r in rules if _rule_matches_interface(r, interface)]
     return rules
+
+
+def _rule_matches_interface(rule: dict[str, Any], interface: str) -> bool:
+    """pfrest v2 returns `interface` as a list; older payloads used a string."""
+    value = rule.get("interface", [])
+    if isinstance(value, str):
+        return value == interface
+    return interface in value
 
 
 def add_firewall_rule(
@@ -30,9 +38,13 @@ def add_firewall_rule(
     dstport: str | None = None,
     descr: str = "",
 ) -> dict[str, Any]:
-    """Add a firewall rule."""
+    """Add a firewall rule.
+
+    pfrest v2 models `interface` as a list, so the single interface given here
+    is wrapped before it is sent.
+    """
     params: dict[str, Any] = {
-        "interface": interface,
+        "interface": [interface],
         "type": type_,
         "ipprotocol": ipprotocol,
         "source": source,
@@ -55,7 +67,7 @@ def delete_firewall_rule(
     rule_id: int,
     confirm: bool = False,
 ) -> dict[str, Any]:
-    """Delete a firewall rule by its tracker ID."""
+    """Delete a firewall rule by its ID (as returned by list_firewall_rules)."""
     if not confirm:
         return {
             "warning": f"This will delete firewall rule with ID {rule_id}. "
