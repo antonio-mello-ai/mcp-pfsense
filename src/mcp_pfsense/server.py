@@ -8,7 +8,7 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_pfsense.client import PfSenseClient
 from mcp_pfsense.config import PfSenseConfig
-from mcp_pfsense.tools import dhcp, dns, firewall, monitoring, system
+from mcp_pfsense.tools import apply, dhcp, dns, firewall, monitoring, system
 
 mcp = FastMCP(
     "mcp-pfsense",
@@ -61,8 +61,13 @@ def add_firewall_rule(
     destination: str = "any",
     dstport: str | None = None,
     descr: str = "",
+    apply: bool = False,
 ) -> dict[str, Any]:
-    """Add a firewall rule. Type is 'pass', 'block', or 'reject'."""
+    """Add a firewall rule. Type is 'pass', 'block', or 'reject'.
+
+    The rule is staged (not active) until apply_changes('firewall') is called
+    or apply=true is passed here.
+    """
     return firewall.add_firewall_rule(
         _get_client(),
         interface=interface,
@@ -73,13 +78,21 @@ def add_firewall_rule(
         destination=destination,
         dstport=dstport,
         descr=descr,
+        apply=apply,
     )
 
 
 @mcp.tool()
-def delete_firewall_rule(rule_id: int, confirm: bool = False) -> dict[str, Any]:
-    """Delete a firewall rule by tracker ID. Requires confirm=true."""
-    return firewall.delete_firewall_rule(_get_client(), rule_id=rule_id, confirm=confirm)
+def delete_firewall_rule(
+    rule_id: int, confirm: bool = False, apply: bool = False
+) -> dict[str, Any]:
+    """Delete a firewall rule by its ID (the `id` from list_firewall_rules). Requires confirm=true.
+
+    Staged until apply_changes('firewall') is called or apply=true is passed.
+    """
+    return firewall.delete_firewall_rule(
+        _get_client(), rule_id=rule_id, confirm=confirm, apply=apply
+    )
 
 
 @mcp.tool()
@@ -99,7 +112,11 @@ def list_dhcp_leases() -> list[dict[str, Any]]:
 
 @mcp.tool()
 def list_dhcp_static_mappings(interface: str | None = None) -> list[dict[str, Any]]:
-    """List DHCP static mappings (IP reservations), optionally filtered by interface."""
+    """List DHCP static mappings (IP reservations), optionally filtered by interface.
+
+    Each mapping carries `parent_id` (its DHCP server / interface) — pass that as
+    `interface` to delete_dhcp_static_mapping.
+    """
     return dhcp.list_dhcp_static_mappings(_get_client(), interface=interface)
 
 
@@ -110,8 +127,12 @@ def add_dhcp_static_mapping(
     ipaddr: str,
     hostname: str = "",
     descr: str = "",
+    apply: bool = False,
 ) -> dict[str, Any]:
-    """Create a DHCP static mapping (IP reservation) for a MAC address."""
+    """Create a DHCP static mapping (IP reservation) for a MAC address.
+
+    Staged until apply_changes('dhcp') is called or apply=true is passed.
+    """
     return dhcp.add_dhcp_static_mapping(
         _get_client(),
         interface=interface,
@@ -119,13 +140,23 @@ def add_dhcp_static_mapping(
         ipaddr=ipaddr,
         hostname=hostname,
         descr=descr,
+        apply=apply,
     )
 
 
 @mcp.tool()
-def delete_dhcp_static_mapping(mapping_id: int, confirm: bool = False) -> dict[str, Any]:
-    """Delete a DHCP static mapping by ID. Requires confirm=true."""
-    return dhcp.delete_dhcp_static_mapping(_get_client(), mapping_id=mapping_id, confirm=confirm)
+def delete_dhcp_static_mapping(
+    interface: str, mapping_id: int, confirm: bool = False, apply: bool = False
+) -> dict[str, Any]:
+    """Delete a DHCP static mapping. Requires confirm=true.
+
+    `interface` is the mapping's DHCP server — the `parent_id` value returned by
+    list_dhcp_static_mappings; `mapping_id` is its `id` there. Staged until
+    apply_changes('dhcp') is called or apply=true is passed.
+    """
+    return dhcp.delete_dhcp_static_mapping(
+        _get_client(), interface=interface, mapping_id=mapping_id, confirm=confirm, apply=apply
+    )
 
 
 # --- DNS ---
@@ -143,21 +174,52 @@ def add_dns_host_override(
     domain: str,
     ip: str,
     descr: str = "",
+    apply: bool = False,
 ) -> dict[str, Any]:
-    """Create a DNS host override entry in Unbound DNS Resolver."""
+    """Create a DNS host override entry in Unbound DNS Resolver.
+
+    Staged until apply_changes('dns') is called or apply=true is passed.
+    """
     return dns.add_dns_host_override(
         _get_client(),
         host=host,
         domain=domain,
         ip=ip,
         descr=descr,
+        apply=apply,
     )
 
 
 @mcp.tool()
-def delete_dns_host_override(override_id: int, confirm: bool = False) -> dict[str, Any]:
-    """Delete a DNS host override by ID. Requires confirm=true."""
-    return dns.delete_dns_host_override(_get_client(), override_id=override_id, confirm=confirm)
+def delete_dns_host_override(
+    override_id: int, confirm: bool = False, apply: bool = False
+) -> dict[str, Any]:
+    """Delete a DNS host override by ID. Requires confirm=true.
+
+    Staged until apply_changes('dns') is called or apply=true is passed.
+    """
+    return dns.delete_dns_host_override(
+        _get_client(), override_id=override_id, confirm=confirm, apply=apply
+    )
+
+
+# --- Pending changes ---
+
+
+@mcp.tool()
+def get_pending_changes(subsystem: str) -> dict[str, Any]:
+    """Check whether a subsystem ('firewall', 'dhcp' or 'dns') has staged, unapplied changes."""
+    return apply.get_pending_changes(_get_client(), subsystem=subsystem)
+
+
+@mcp.tool()
+def apply_changes(subsystem: str, confirm: bool = False) -> dict[str, Any]:
+    """Apply ALL staged changes of a subsystem ('firewall', 'dhcp' or 'dns'). Requires confirm=true.
+
+    This reloads the subsystem, activating every pending change — including any
+    a human staged in the pfSense WebGUI and has not reviewed yet.
+    """
+    return apply.apply_changes(_get_client(), subsystem=subsystem, confirm=confirm)
 
 
 # --- Monitoring & Diagnostics ---

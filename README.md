@@ -10,7 +10,7 @@ MCP server for managing **pfSense firewalls** through AI assistants like Claude,
 
 ## Features
 
-**17 tools** across 6 categories:
+**19 tools** across 7 categories:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
@@ -18,12 +18,15 @@ MCP server for managing **pfSense firewalls** through AI assistants like Claude,
 | **Firewall** | `list_firewall_rules`, `add_firewall_rule`, `delete_firewall_rule`, `list_firewall_aliases` | Rule management with interface filtering, alias listing |
 | **DHCP** | `list_dhcp_leases`, `list_dhcp_static_mappings`, `add_dhcp_static_mapping`, `delete_dhcp_static_mapping` | Active leases, IP reservations |
 | **DNS** | `list_dns_host_overrides`, `add_dns_host_override`, `delete_dns_host_override` | Unbound DNS Resolver host overrides |
+| **Pending changes** | `get_pending_changes`, `apply_changes` | See what is staged per subsystem (firewall, dhcp, dns) and apply it |
 | **Monitoring** | `get_gateway_status`, `get_arp_table`, `list_services` | Gateway health, connected devices, service status |
 | **Services** | `restart_service` | Restart any pfSense service |
 
 ### Safety
 
-All destructive operations (delete rules, delete mappings, restart services) require **two-step confirmation** — the tool returns a warning on first call and only executes when called again with `confirm=true`.
+- **Two-step confirmation** for destructive operations (delete rules, delete mappings, restart services, apply changes): the tool returns a warning on first call and only executes when called again with `confirm=true`.
+- **Writes are staged, not live.** Like the pfSense WebGUI, `add_*` and `delete_*` store the change in the config but do not activate it. The tool response says so (`applied: false`, plus a `pending` note). Activate with `apply_changes(subsystem, confirm=true)` — which reloads that subsystem, including anything a human left staged in the WebGUI — or pass `apply=true` on the write itself when you explicitly want a one-shot change. Nothing the assistant does reaches the packet filter without one of those two explicit steps.
+- `delete_dhcp_static_mapping` takes the mapping's `interface` (its `parent_id` in `list_dhcp_static_mappings`) and `mapping_id`; a mapping is addressed by both.
 
 ## Installation
 
@@ -95,11 +98,31 @@ Once connected, ask your AI assistant:
 
 ## API Compatibility
 
-- **pfSense**: 2.7.x (tested on 2.7.2)
-- **pfrest**: v2.x (REST API v2)
+- **pfSense**: 2.7.x and 2.8.x
+- **pfrest**: REST API v2 — any v2.x release, except `list_dhcp_static_mappings`, which needs **v2.7.0 or later** (it uses the `/services/dhcp_server/static_mappings` collection endpoint added in that release).
 - **Python**: 3.11+
 
+The endpoint, parameters and encoding each tool uses are pinned by `tests/test_client_endpoints.py` and `tests/test_wire_format.py`, derived from the pfrest v2 endpoint definitions. Versions before 0.2.0 called several endpoints that do not exist in pfrest v2 (see Troubleshooting).
+
 > **Note**: pfrest runs on nginx (port 80 by default), separate from the pfSense WebGUI (lighttpd on port 443). If your pfrest is configured on a non-standard port, set `PFSENSE_PORT` and `PFSENSE_SCHEME` accordingly.
+
+## Troubleshooting
+
+### Only `get_system_status` and `get_arp_table` work; everything else returns 400/404
+
+mcp-pfsense 0.1.1 and earlier called singular endpoints for listing (`/interface`, `/firewall/rule`, `/firewall/alias`) and legacy paths that pfrest v2 does not serve (`/status/dhcp_leases`, `/services/dhcpd/static_mapping`, `/services/unbound/host_override`, `/status/gateway`, `/status/service` for GET). Upgrade to 0.2.0 or later.
+
+### `403` on `list_services` or other reads
+
+pfrest checks the privileges of the API user per endpoint. Grant the user the `api-v2-*` privileges for the endpoints you need (or `page-all` for full access) under **System → User Manager**.
+
+### `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`
+
+The MCP Python SDK 2.0 removed the module that mcp-pfsense 0.1.1 and earlier import, so fresh installs (`uvx mcp-pfsense`, `pip install`) failed on startup. Upgrade to 0.2.0 or later, which pins `mcp<2`. If you must stay on an older mcp-pfsense: `uvx --with "mcp<2" mcp-pfsense`.
+
+### A rule / mapping / override was created but is not in effect
+
+That is the default: writes are staged (see **Safety**). Check with `get_pending_changes(subsystem)` and activate with `apply_changes(subsystem, confirm=true)`, or in the WebGUI. If a write returns 200 but nothing is stored at all, the pfrest **`read_only`** setting is on (System → REST API → Settings).
 
 ## Development
 

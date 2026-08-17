@@ -20,6 +20,9 @@ def test_list_dhcp_leases(client: PfSenseClient) -> None:
 
     assert len(result) == 2
     assert result[0]["hostname"] == "laptop-home"
+    client._client.get.assert_called_once_with(  # type: ignore[union-attr]
+        "/status/dhcp_server/leases", params=None
+    )
 
 
 def test_list_dhcp_static_mappings(client: PfSenseClient) -> None:
@@ -43,8 +46,10 @@ def test_list_dhcp_static_mappings_with_interface(client: PfSenseClient) -> None
     result = dhcp.list_dhcp_static_mappings(client, interface="lan")
 
     assert len(result) == 1
-    # Verify the interface param was passed
-    client._client.get.assert_called_once()  # type: ignore[union-attr]
+    # Static mappings are children of the DHCP server, addressed by parent_id
+    client._client.get.assert_called_once_with(  # type: ignore[union-attr]
+        "/services/dhcp_server/static_mappings", params={"parent_id": "lan"}
+    )
 
 
 def test_add_dhcp_static_mapping(client: PfSenseClient) -> None:
@@ -63,13 +68,24 @@ def test_add_dhcp_static_mapping(client: PfSenseClient) -> None:
 
     assert result["id"] == 2
     assert result["hostname"] == "printer"
+    client._client.post.assert_called_once_with(  # type: ignore[union-attr]
+        "/services/dhcp_server/static_mapping",
+        json={
+            "parent_id": "lan",
+            "apply": False,
+            "mac": "aa:bb:cc:dd:ee:20",
+            "ipaddr": "10.10.10.60",
+            "hostname": "printer",
+        },
+    )
 
 
 def test_delete_dhcp_static_mapping_no_confirm(client: PfSenseClient) -> None:
-    result = dhcp.delete_dhcp_static_mapping(client, mapping_id=1, confirm=False)
+    result = dhcp.delete_dhcp_static_mapping(client, interface="lan", mapping_id=1, confirm=False)
 
     assert "warning" in result
     assert result["mapping_id"] == 1
+    client._client.delete.assert_not_called()  # type: ignore[union-attr]
 
 
 def test_delete_dhcp_static_mapping_confirmed(client: PfSenseClient) -> None:
@@ -78,7 +94,11 @@ def test_delete_dhcp_static_mapping_confirmed(client: PfSenseClient) -> None:
     mock_resp.raise_for_status = MagicMock()
     client._client.delete.return_value = mock_resp  # type: ignore[union-attr]
 
-    result = dhcp.delete_dhcp_static_mapping(client, mapping_id=1, confirm=True)
+    result = dhcp.delete_dhcp_static_mapping(client, interface="lan", mapping_id=1, confirm=True)
 
     assert result["success"] is True
     assert result["mapping_id"] == 1
+    client._client.delete.assert_called_once_with(  # type: ignore[union-attr]
+        "/services/dhcp_server/static_mapping",
+        params={"parent_id": "lan", "id": 1, "apply": False},
+    )
