@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from mcp_pfsense.client import PfSenseClient
+from mcp_pfsense.tools.apply import with_apply_state
 
 
 def list_dhcp_leases(client: PfSenseClient) -> list[dict[str, Any]]:
@@ -20,7 +21,13 @@ def list_dhcp_static_mappings(
     client: PfSenseClient,
     interface: str | None = None,
 ) -> list[dict[str, Any]]:
-    """List DHCP static mappings (IP reservations), optionally filtered by interface."""
+    """List DHCP static mappings (IP reservations), optionally filtered by interface.
+
+    The interface filter is applied server-side (`parent_id` query): mappings are
+    children of one DHCP server, so the match is exact and pfrest handles it.
+    Each returned mapping carries `parent_id` — that is the value to pass as
+    `interface` when deleting it.
+    """
     result = client.get_dhcp_static_mappings(interface=interface)
     data = result.get("data", [])
     if isinstance(data, list):
@@ -35,8 +42,12 @@ def add_dhcp_static_mapping(
     ipaddr: str,
     hostname: str = "",
     descr: str = "",
+    apply: bool = False,
 ) -> dict[str, Any]:
-    """Create a DHCP static mapping (IP reservation) for a MAC address."""
+    """Create a DHCP static mapping (IP reservation) for a MAC address.
+
+    Staged unless `apply` is true (applying restarts dhcpd).
+    """
     params: dict[str, Any] = {
         "mac": mac,
         "ipaddr": ipaddr,
@@ -46,9 +57,9 @@ def add_dhcp_static_mapping(
     if descr:
         params["descr"] = descr
 
-    result = client.create_dhcp_static_mapping(interface, **params)
+    result = client.create_dhcp_static_mapping(interface, apply=apply, **params)
     data: dict[str, Any] = result.get("data", result)
-    return data
+    return with_apply_state(data, "dhcp", apply)
 
 
 def delete_dhcp_static_mapping(
@@ -56,11 +67,13 @@ def delete_dhcp_static_mapping(
     interface: str,
     mapping_id: int,
     confirm: bool = False,
+    apply: bool = False,
 ) -> dict[str, Any]:
     """Delete a DHCP static mapping by interface and ID.
 
     Static mappings belong to a DHCP server (one per interface), so both the
-    interface and the mapping ID are needed to address one.
+    interface (the mapping's `parent_id`) and the mapping ID are needed to
+    address one. Staged unless `apply` is true.
     """
     if not confirm:
         return {
@@ -70,11 +83,15 @@ def delete_dhcp_static_mapping(
             "mapping_id": mapping_id,
         }
 
-    result = client.delete_dhcp_static_mapping(interface, mapping_id)
-    return {
-        "success": True,
-        "interface": interface,
-        "mapping_id": mapping_id,
-        "message": f"DHCP static mapping {mapping_id} deleted.",
-        "data": result.get("data", {}),
-    }
+    result = client.delete_dhcp_static_mapping(interface, mapping_id, apply=apply)
+    return with_apply_state(
+        {
+            "success": True,
+            "interface": interface,
+            "mapping_id": mapping_id,
+            "message": f"DHCP static mapping {mapping_id} deleted.",
+            "data": result.get("data", {}),
+        },
+        "dhcp",
+        apply,
+    )

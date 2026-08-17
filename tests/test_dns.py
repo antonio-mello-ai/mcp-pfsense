@@ -40,7 +40,7 @@ def test_add_dns_host_override(client: PfSenseClient) -> None:
     assert result["host"] == "proxmox"
     client._client.post.assert_called_once_with(  # type: ignore[union-attr]
         "/services/dns_resolver/host_override",
-        json={"apply": True, "host": "proxmox", "domain": "home.lan", "ip": ["10.10.10.100"]},
+        json={"apply": False, "host": "proxmox", "domain": "home.lan", "ip": ["10.10.10.100"]},
     )
 
 
@@ -62,5 +62,5 @@ def test_delete_dns_host_override_confirmed(client: PfSenseClient) -> None:
     assert result["success"] is True
     assert result["override_id"] == 1
     client._client.delete.assert_called_once_with(  # type: ignore[union-attr]
-        "/services/dns_resolver/host_override", params={"id": 1, "apply": True}
+        "/services/dns_resolver/host_override", params={"id": 1, "apply": False}
     )

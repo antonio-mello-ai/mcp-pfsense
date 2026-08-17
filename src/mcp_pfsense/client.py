@@ -18,10 +18,21 @@ class PfSenseClient:
     (``/firewall/rule``) that operates on one object addressed by ``id`` (plus
     ``parent_id`` for child objects), and a plural endpoint
     (``/firewall/rules``) that lists the collection. Reads go to the plural
-    endpoints; creates and deletes go to the singular ones. Write operations
-    pass ``apply=true`` so the change takes effect immediately instead of
-    staying pending.
+    endpoints; creates and deletes go to the singular ones.
+
+    Writes are *staged* by default, exactly like the pfSense WebGUI: the change
+    lands in the config but is not active until the subsystem is applied. Pass
+    ``apply=True`` to a write to apply in the same call, or call
+    :meth:`apply_changes` afterwards. ``apply`` triggers a full reload of the
+    subsystem (``filter_configure``, dhcpd restart, unbound reload), which also
+    activates anything a human left staged in the WebGUI — hence opt-in.
     """
+
+    APPLY_ENDPOINTS: dict[str, str] = {
+        "firewall": "/firewall/apply",
+        "dhcp": "/services/dhcp_server/apply",
+        "dns": "/services/dns_resolver/apply",
+    }
 
     def __init__(self, config: PfSenseConfig) -> None:
         self._config = config
@@ -89,13 +100,13 @@ class PfSenseClient:
         """List all firewall rules."""
         return self._get("/firewall/rules")
 
-    def create_firewall_rule(self, **params: Any) -> dict[str, Any]:
-        """Create a firewall rule and apply the filter reload."""
-        return self._post("/firewall/rule", apply=True, **params)
+    def create_firewall_rule(self, *, apply: bool = False, **params: Any) -> dict[str, Any]:
+        """Create a firewall rule (staged unless ``apply``)."""
+        return self._post("/firewall/rule", apply=apply, **params)
 
-    def delete_firewall_rule(self, rule_id: int) -> dict[str, Any]:
-        """Delete a firewall rule by ID and apply the filter reload."""
-        return self._delete("/firewall/rule", id=rule_id, apply=True)
+    def delete_firewall_rule(self, rule_id: int, *, apply: bool = False) -> dict[str, Any]:
+        """Delete a firewall rule by ID (staged unless ``apply``)."""
+        return self._delete("/firewall/rule", id=rule_id, apply=apply)
 
     # --- DHCP ---
 
@@ -113,22 +124,26 @@ class PfSenseClient:
             return self._get("/services/dhcp_server/static_mappings", parent_id=interface)
         return self._get("/services/dhcp_server/static_mappings")
 
-    def create_dhcp_static_mapping(self, interface: str, **params: Any) -> dict[str, Any]:
-        """Create a DHCP static mapping on the given interface's DHCP server."""
+    def create_dhcp_static_mapping(
+        self, interface: str, *, apply: bool = False, **params: Any
+    ) -> dict[str, Any]:
+        """Create a DHCP static mapping on the interface's DHCP server (staged unless ``apply``)."""
         return self._post(
             "/services/dhcp_server/static_mapping",
             parent_id=interface,
-            apply=True,
+            apply=apply,
             **params,
         )
 
-    def delete_dhcp_static_mapping(self, interface: str, mapping_id: int) -> dict[str, Any]:
-        """Delete a DHCP static mapping by interface (parent) and ID."""
+    def delete_dhcp_static_mapping(
+        self, interface: str, mapping_id: int, *, apply: bool = False
+    ) -> dict[str, Any]:
+        """Delete a DHCP static mapping by interface (parent) and ID (staged unless ``apply``)."""
         return self._delete(
             "/services/dhcp_server/static_mapping",
             parent_id=interface,
             id=mapping_id,
-            apply=True,
+            apply=apply,
         )
 
     # --- DNS ---
@@ -137,13 +152,23 @@ class PfSenseClient:
         """List DNS Resolver host overrides."""
         return self._get("/services/dns_resolver/host_overrides")
 
-    def create_dns_host_override(self, **params: Any) -> dict[str, Any]:
-        """Create a DNS host override and apply the resolver reload."""
-        return self._post("/services/dns_resolver/host_override", apply=True, **params)
+    def create_dns_host_override(self, *, apply: bool = False, **params: Any) -> dict[str, Any]:
+        """Create a DNS host override (staged unless ``apply``)."""
+        return self._post("/services/dns_resolver/host_override", apply=apply, **params)
 
-    def delete_dns_host_override(self, override_id: int) -> dict[str, Any]:
-        """Delete a DNS host override by ID and apply the resolver reload."""
-        return self._delete("/services/dns_resolver/host_override", id=override_id, apply=True)
+    def delete_dns_host_override(self, override_id: int, *, apply: bool = False) -> dict[str, Any]:
+        """Delete a DNS host override by ID (staged unless ``apply``)."""
+        return self._delete("/services/dns_resolver/host_override", id=override_id, apply=apply)
+
+    # --- Apply (pending changes) ---
+
+    def get_apply_status(self, subsystem: str) -> dict[str, Any]:
+        """Report whether a subsystem (firewall, dhcp, dns) has pending changes."""
+        return self._get(self.APPLY_ENDPOINTS[subsystem])
+
+    def apply_changes(self, subsystem: str) -> dict[str, Any]:
+        """Apply the pending changes of a subsystem (firewall, dhcp, dns)."""
+        return self._post(self.APPLY_ENDPOINTS[subsystem])
 
     # --- Gateways ---
 

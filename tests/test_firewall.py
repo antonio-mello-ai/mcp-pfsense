@@ -35,20 +35,26 @@ def test_list_firewall_rules_filter_interface(client: PfSenseClient) -> None:
     client._client.get.assert_called_once_with("/firewall/rules", params=None)  # type: ignore[union-attr]
 
 
-def test_list_firewall_rules_filter_interface_legacy_string(client: PfSenseClient) -> None:
-    """Older payloads carried `interface` as a plain string; keep matching them."""
+def test_list_firewall_rules_filter_matches_multi_interface_rules(client: PfSenseClient) -> None:
+    """A rule bound to several interfaces matches each of them; odd payloads don't crash."""
     mock_resp = MagicMock()
     mock_resp.json.return_value = {
         "code": 200,
         "status": "ok",
-        "data": [{"id": 1, "interface": "lan"}, {"id": 2, "interface": "wan"}],
+        "data": [
+            {"id": 1, "interface": ["lan", "opt1"]},
+            {"id": 2, "interface": ["wan"]},
+            {"id": 3, "interface": "opt1"},
+            {"id": 4, "interface": None},
+            {"id": 5},
+        ],
     }
     mock_resp.raise_for_status = MagicMock()
     client._client.get.return_value = mock_resp  # type: ignore[union-attr]
 
-    result = firewall.list_firewall_rules(client, interface="wan")
+    result = firewall.list_firewall_rules(client, interface="opt1")
 
-    assert [r["id"] for r in result] == [2]
+    assert [r["id"] for r in result] == [1, 3]
 
 
 def test_add_firewall_rule(client: PfSenseClient) -> None:
@@ -70,7 +76,7 @@ def test_add_firewall_rule(client: PfSenseClient) -> None:
     client._client.post.assert_called_once_with(  # type: ignore[union-attr]
         "/firewall/rule",
         json={
-            "apply": True,
+            "apply": False,
             "interface": ["lan"],
             "type": "pass",
             "ipprotocol": "inet",

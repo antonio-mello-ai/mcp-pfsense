@@ -72,7 +72,7 @@ def test_add_dhcp_static_mapping(client: PfSenseClient) -> None:
         "/services/dhcp_server/static_mapping",
         json={
             "parent_id": "lan",
-            "apply": True,
+            "apply": False,
             "mac": "aa:bb:cc:dd:ee:20",
             "ipaddr": "10.10.10.60",
             "hostname": "printer",
@@ -100,5 +100,5 @@ def test_delete_dhcp_static_mapping_confirmed(client: PfSenseClient) -> None:
     assert result["mapping_id"] == 1
     client._client.delete.assert_called_once_with(  # type: ignore[union-attr]
         "/services/dhcp_server/static_mapping",
-        params={"parent_id": "lan", "id": 1, "apply": True},
+        params={"parent_id": "lan", "id": 1, "apply": False},
     )

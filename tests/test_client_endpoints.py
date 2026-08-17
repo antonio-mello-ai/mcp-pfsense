@@ -45,6 +45,9 @@ def _ok(client: PfSenseClient, method: str) -> MagicMock:
         (lambda c: c.get_gateway_status(), "/status/gateways", None),
         (lambda c: c.get_arp_table(), "/diagnostics/arp_table", None),
         (lambda c: c.get_services_status(), "/status/services", None),
+        (lambda c: c.get_apply_status("firewall"), "/firewall/apply", None),
+        (lambda c: c.get_apply_status("dhcp"), "/services/dhcp_server/apply", None),
+        (lambda c: c.get_apply_status("dns"), "/services/dns_resolver/apply", None),
     ],
 )
 def test_get_endpoints(
@@ -61,8 +64,15 @@ def test_get_endpoints(
 @pytest.mark.parametrize(
     ("call", "path", "json"),
     [
+        # writes are staged by default (apply=false) ...
         (
             lambda c: c.create_firewall_rule(type="pass", interface=["lan"]),
+            "/firewall/rule",
+            {"apply": False, "type": "pass", "interface": ["lan"]},
+        ),
+        # ... and applied only when asked
+        (
+            lambda c: c.create_firewall_rule(apply=True, type="pass", interface=["lan"]),
             "/firewall/rule",
             {"apply": True, "type": "pass", "interface": ["lan"]},
         ),
@@ -71,25 +81,28 @@ def test_get_endpoints(
                 "lan", mac="aa:bb:cc:dd:ee:ff", ipaddr="10.0.0.5"
             ),
             "/services/dhcp_server/static_mapping",
-            {"parent_id": "lan", "apply": True, "mac": "aa:bb:cc:dd:ee:ff", "ipaddr": "10.0.0.5"},
+            {"parent_id": "lan", "apply": False, "mac": "aa:bb:cc:dd:ee:ff", "ipaddr": "10.0.0.5"},
         ),
         (
             lambda c: c.create_dns_host_override(host="nas", domain="home.lan", ip=["10.0.0.5"]),
             "/services/dns_resolver/host_override",
-            {"apply": True, "host": "nas", "domain": "home.lan", "ip": ["10.0.0.5"]},
+            {"apply": False, "host": "nas", "domain": "home.lan", "ip": ["10.0.0.5"]},
         ),
         (
             lambda c: c.restart_service("unbound"),
             "/status/service",
             {"name": "unbound", "action": "restart"},
         ),
+        (lambda c: c.apply_changes("firewall"), "/firewall/apply", None),
+        (lambda c: c.apply_changes("dhcp"), "/services/dhcp_server/apply", None),
+        (lambda c: c.apply_changes("dns"), "/services/dns_resolver/apply", None),
     ],
 )
 def test_post_endpoints(
     client: PfSenseClient,
     call: Callable[[PfSenseClient], Any],
     path: str,
-    json: dict[str, Any],
+    json: dict[str, Any] | None,
 ) -> None:
     post = _ok(client, "post")
     call(client)
@@ -99,16 +112,21 @@ def test_post_endpoints(
 @pytest.mark.parametrize(
     ("call", "path", "params"),
     [
-        (lambda c: c.delete_firewall_rule(7), "/firewall/rule", {"id": 7, "apply": True}),
+        (lambda c: c.delete_firewall_rule(7), "/firewall/rule", {"id": 7, "apply": False}),
+        (
+            lambda c: c.delete_firewall_rule(7, apply=True),
+            "/firewall/rule",
+            {"id": 7, "apply": True},
+        ),
         (
             lambda c: c.delete_dhcp_static_mapping("lan", 2),
             "/services/dhcp_server/static_mapping",
-            {"parent_id": "lan", "id": 2, "apply": True},
+            {"parent_id": "lan", "id": 2, "apply": False},
         ),
         (
             lambda c: c.delete_dns_host_override(4),
             "/services/dns_resolver/host_override",
-            {"id": 4, "apply": True},
+            {"id": 4, "apply": False},
         ),
     ],
 )
