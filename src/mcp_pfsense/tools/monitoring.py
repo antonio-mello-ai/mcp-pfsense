@@ -34,6 +34,30 @@ def list_services(client: PfSenseClient) -> list[dict[str, Any]]:
     return [data] if data else []
 
 
+def get_firewall_logs(
+    client: PfSenseClient,
+    limit: int = 50,
+    action: str | None = None,
+) -> list[dict[str, Any]]:
+    """Get recent firewall log entries (read-only).
+
+    Answers "why was traffic to 10.0.0.5:443 blocked?" at a glance: each entry
+    carries the time, action (pass/block), interface, source, destination, port
+    and protocol. ``limit`` caps the number of entries (default 50); ``action``
+    optionally narrows to ``pass`` or ``block``. This tool never writes.
+    """
+    result = client.get_firewall_logs(limit=limit, action=action)
+    entries: list[dict[str, Any]] = result.get("data", [])
+    if not isinstance(entries, list):
+        entries = [entries] if entries else []
+
+    if action:
+        wanted = action.lower()
+        entries = [e for e in entries if str(e.get("action", "")).lower() == wanted]
+
+    return entries[:limit]
+
+
 def restart_service(
     client: PfSenseClient,
     name: str,

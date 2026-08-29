@@ -31,6 +31,7 @@ EXPECTED_TOOLS = {
     "get_arp_table",
     "list_services",
     "restart_service",
+    "get_firewall_logs",
 }
 
 

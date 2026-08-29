@@ -10,7 +10,7 @@ MCP server for managing **pfSense firewalls** through AI assistants like Claude,
 
 ## Features
 
-**19 tools** across 7 categories:
+**20 tools** across 7 categories:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
@@ -19,7 +19,7 @@ MCP server for managing **pfSense firewalls** through AI assistants like Claude,
 | **DHCP** | `list_dhcp_leases`, `list_dhcp_static_mappings`, `add_dhcp_static_mapping`, `delete_dhcp_static_mapping` | Active leases, IP reservations |
 | **DNS** | `list_dns_host_overrides`, `add_dns_host_override`, `delete_dns_host_override` | Unbound DNS Resolver host overrides |
 | **Pending changes** | `get_pending_changes`, `apply_changes` | See what is staged per subsystem (firewall, dhcp, dns) and apply it |
-| **Monitoring** | `get_gateway_status`, `get_arp_table`, `list_services` | Gateway health, connected devices, service status |
+| **Monitoring** | `get_gateway_status`, `get_arp_table`, `list_services`, `get_firewall_logs` | Gateway health, connected devices, service status, recent firewall log entries |
 | **Services** | `restart_service` | Restart any pfSense service |
 
 ### Safety
@@ -93,6 +93,7 @@ Once connected, ask your AI assistant:
 - *"Add a DNS entry for nas.home.lan pointing to 10.10.10.50"*
 - *"What devices are connected to the network?"* (ARP table)
 - *"Show gateway health and latency"*
+- *"Why was traffic to 10.0.0.5:443 blocked?"* (read-only `get_firewall_logs`, optionally `action="block"`)
 - *"Create a firewall rule to allow TCP port 8080 on LAN"*
 - *"Reserve IP 10.10.10.60 for MAC aa:bb:cc:dd:ee:20"*
 

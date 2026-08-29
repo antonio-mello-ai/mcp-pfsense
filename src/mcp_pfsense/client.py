@@ -188,6 +188,21 @@ class PfSenseClient:
         """List all services and their status."""
         return self._get("/status/services")
 
+    # --- Firewall logs ---
+
+    def get_firewall_logs(
+        self, limit: int = 50, action: str | None = None
+    ) -> dict[str, Any]:
+        """Get recent firewall log entries (read-only).
+
+        Thin wrapper over ``GET /status/log/firewall``. ``limit`` keeps the
+        payload small; ``action`` optionally filters to ``pass`` or ``block``.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if action:
+            params["action"] = action
+        return self._get("/status/log/firewall", **params)
+
     def restart_service(self, name: str) -> dict[str, Any]:
         """Restart a service by name."""
         return self._post("/status/service", name=name, action="restart")
