@@ -249,6 +249,19 @@ def restart_service(name: str, confirm: bool = False) -> dict[str, Any]:
     return monitoring.restart_service(_get_client(), name=name, confirm=confirm)
 
 
+@mcp.tool()
+def get_firewall_logs(limit: int = 50, action: str | None = None) -> list[dict[str, Any]]:
+    """Read-only view of recent firewall log entries.
+
+    Each entry shows the time, action (pass/block), interface, source,
+    destination, port and protocol — answering "why was traffic to 10.0.0.5:443
+    blocked?" at a glance. `limit` caps the number of entries (default 50) and
+    `action` optionally narrows to 'pass' or 'block'. This tool only reads logs;
+    it never writes to the firewall.
+    """
+    return monitoring.get_firewall_logs(_get_client(), limit=limit, action=action)
+
+
 def main() -> None:
     """Run the MCP server."""
     mcp.run()

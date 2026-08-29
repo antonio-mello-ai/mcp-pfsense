@@ -242,3 +242,37 @@ SERVICE_RESTARTED = {
     "status": "ok",
     "data": {"name": "unbound", "action": "restart"},
 }
+
+FIREWALL_LOGS = {
+    "code": 200,
+    "status": "ok",
+    "data": [
+        {
+            "time": "2026-08-29 10:12:01",
+            "action": "block",
+            "interface": "wan",
+            "source": "203.0.113.45",
+            "destination": "10.10.10.5",
+            "port": "443",
+            "protocol": "tcp",
+        },
+        {
+            "time": "2026-08-29 10:12:00",
+            "action": "pass",
+            "interface": "lan",
+            "source": "10.10.10.20",
+            "destination": "8.8.8.8",
+            "port": "53",
+            "protocol": "udp",
+        },
+        {
+            "time": "2026-08-29 10:11:58",
+            "action": "block",
+            "interface": "wan",
+            "source": "198.51.100.7",
+            "destination": "10.10.10.5",
+            "port": "22",
+            "protocol": "tcp",
+        },
+    ],
+}

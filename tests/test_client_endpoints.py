@@ -45,6 +45,12 @@ def _ok(client: PfSenseClient, method: str) -> MagicMock:
         (lambda c: c.get_gateway_status(), "/status/gateways", None),
         (lambda c: c.get_arp_table(), "/diagnostics/arp_table", None),
         (lambda c: c.get_services_status(), "/status/services", None),
+        (lambda c: c.get_firewall_logs(), "/status/log/firewall", {"limit": 50}),
+        (
+            lambda c: c.get_firewall_logs(action="block"),
+            "/status/log/firewall",
+            {"limit": 50, "action": "block"},
+        ),
         (lambda c: c.get_apply_status("firewall"), "/firewall/apply", None),
         (lambda c: c.get_apply_status("dhcp"), "/services/dhcp_server/apply", None),
         (lambda c: c.get_apply_status("dns"), "/services/dns_resolver/apply", None),
