@@ -249,6 +249,17 @@ def restart_service(name: str, confirm: bool = False) -> dict[str, Any]:
     return monitoring.restart_service(_get_client(), name=name, confirm=confirm)
 
 
+@mcp.tool()
+def get_firewall_logs(limit: int = 50) -> list[dict[str, Any]]:
+    """Read-only view of recent firewall log entries.
+
+    Each entry contains its ID and raw log text from pfrest. `limit` caps the
+    number of entries (default 50). This tool only reads logs; it never writes
+    to the firewall.
+    """
+    return monitoring.get_firewall_logs(_get_client(), limit=limit)
+
+
 def main() -> None:
     """Run the MCP server."""
     mcp.run()

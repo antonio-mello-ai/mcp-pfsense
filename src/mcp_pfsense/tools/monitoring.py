@@ -34,6 +34,23 @@ def list_services(client: PfSenseClient) -> list[dict[str, Any]]:
     return [data] if data else []
 
 
+def get_firewall_logs(
+    client: PfSenseClient,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Get recent firewall log entries (read-only).
+
+    The pfrest v2 API exposes each entry as an ID and raw log text. ``limit``
+    caps the number of entries (default 50). This tool never writes.
+    """
+    result = client.get_firewall_logs(limit=limit)
+    entries: list[dict[str, Any]] = result.get("data", [])
+    if not isinstance(entries, list):
+        entries = [entries] if entries else []
+
+    return entries[:limit]
+
+
 def restart_service(
     client: PfSenseClient,
     name: str,

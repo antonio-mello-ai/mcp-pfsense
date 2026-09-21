@@ -64,3 +64,27 @@ def test_restart_service_confirmed(client: PfSenseClient) -> None:
 
     assert result["success"] is True
     assert result["service"] == "unbound"
+
+
+def test_get_firewall_logs_default(client: PfSenseClient) -> None:
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = sample_data.FIREWALL_LOGS
+    mock_resp.raise_for_status = MagicMock()
+    client._client.get.return_value = mock_resp  # type: ignore[union-attr]
+
+    result = monitoring.get_firewall_logs(client)
+
+    assert len(result) == 3
+    assert result[0] == {"id": 17, "text": "raw firewall log entry 1"}
+
+
+def test_get_firewall_logs_limit(client: PfSenseClient) -> None:
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = sample_data.FIREWALL_LOGS
+    mock_resp.raise_for_status = MagicMock()
+    client._client.get.return_value = mock_resp  # type: ignore[union-attr]
+
+    result = monitoring.get_firewall_logs(client, limit=1)
+
+    assert len(result) == 1
+    assert result[0]["text"] == "raw firewall log entry 1"

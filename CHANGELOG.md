@@ -3,6 +3,11 @@
 All notable changes to mcp-pfsense are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+- `get_firewall_logs(limit)` — a strictly read-only monitoring tool that returns recent raw firewall log entries (`id`, `text`) from `GET /status/logs/firewall`. Supports a `limit` (default 50) without dropping into the WebGUI (#5).
+
 ## [0.2.0] — 2026-08-17
 
 ### Fixed

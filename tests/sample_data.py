@@ -242,3 +242,13 @@ SERVICE_RESTARTED = {
     "status": "ok",
     "data": {"name": "unbound", "action": "restart"},
 }
+
+FIREWALL_LOGS = {
+    "code": 200,
+    "status": "ok",
+    "data": [
+        {"id": 17, "text": "raw firewall log entry 1"},
+        {"id": 18, "text": "raw firewall log entry 2"},
+        {"id": 19, "text": "raw firewall log entry 3"},
+    ],
+}
